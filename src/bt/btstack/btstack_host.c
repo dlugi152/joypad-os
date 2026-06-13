@@ -1653,6 +1653,7 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
                             link_key_t link_key;
                             link_key_type_t key_type;
                             bool have_key = gap_get_link_key_for_bd_addr(addr, link_key, &key_type);
+                            have_key = false;
                             printf("[BTSTACK_HOST] Wiimote: have_key=%d type=%d\n", have_key, have_key ? key_type : -1);
 
                             // Store info for when L2CAP events come in
