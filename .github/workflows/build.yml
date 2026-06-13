@@ -83,12 +83,6 @@ jobs:
             config_app: bt2usb
             bin_name: bt2usb
             uf2_family: "0xc47e5767"
-          - app: controller_btusb_feather_esp32s3
-            idf_target: esp32s3
-            board: feather_esp32s3
-            config_app: controller_btusb
-            bin_name: controller_btusb
-            uf2_family: "0xc47e5767"
 
     steps:
       - name: Checkout code with submodules
@@ -144,18 +138,6 @@ jobs:
           - app: bt2usb_seeed_xiao_nrf52840
             board: xiao_ble
             app_type: bt2usb
-          - app: bt2usb_feather_nrf52840
-            board: adafruit_feather_nrf52840
-            app_type: bt2usb
-          - app: usb2usb_feather_nrf52840_max3421
-            board: adafruit_feather_nrf52840
-            app_type: usb2usb
-          - app: btusb2usb_feather_nrf52840
-            board: adafruit_feather_nrf52840
-            app_type: btusb2usb
-          - app: controller_btusb_feather_nrf52840
-            board: adafruit_feather_nrf52840
-            app_type: controller_btusb
 
     steps:
       - name: Checkout code with submodules
