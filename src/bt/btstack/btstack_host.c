@@ -290,7 +290,6 @@ static struct {
     bool pending_outgoing;  // True if we initiated the connection (hid_host_connect)
     hci_con_handle_t pending_acl_handle;  // ACL handle for pending incoming connection
     const bt_device_profile_t* pending_profile;
-    bool pending_sony_encryption_requested;
     // Pending HID connect (deferred until encryption completes)
     bd_addr_t pending_hid_addr;
     hci_con_handle_t pending_hid_handle;
@@ -1433,7 +1432,6 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
                 classic_state.pending_profile = profile;
                 classic_state.pending_valid = true;
                 classic_state.pending_outgoing = true;  // We initiated this connection
-                classic_state.pending_sony_encryption_requested = false;
 
                 // If name is unavailable, request it and defer connection to
                 // REMOTE_NAME_REQUEST_COMPLETE. Wiimote-family devices (Wii U Pro,
@@ -1570,11 +1568,8 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
             classic_state.pending_name[0] = '\0';  // Clear, will be filled by remote name request
             classic_state.pending_vid = 0;
             classic_state.pending_pid = 0;
-            classic_state.pending_profile = NULL;
             classic_state.pending_valid = true;
             classic_state.pending_outgoing = false;  // Device initiated this connection
-            classic_state.pending_sony_encryption_requested = false;
-            classic_state.pending_hid_connect = false;
             classic_state.waiting_for_incoming_time = 0;  // Device reconnected
             // BTstack will auto-accept with the current master_slave_policy
             break;
@@ -2016,7 +2011,6 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
                     !classic_state.pending_outgoing &&
                     memcmp(name_addr, classic_state.pending_addr, 6) == 0) {
                     printf("[BTSTACK_HOST] Late Sony detection (incoming) - using HID Host path\n");
-                    classic_state.pending_profile = late_profile;
                     if (classic_state.pending_vid == 0) {
                         classic_state.pending_vid = late_profile->default_vid;
                     }
@@ -2303,33 +2297,16 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
         }
 
         case HCI_EVENT_AUTHENTICATION_COMPLETE: {
+            uint8_t status2 = hci_event_authentication_complete_get_status(packet);
+            uint16_t handle2 = hci_event_authentication_complete_get_connection_handle(packet);
+            if (status == ERROR_CODE_SUCCESS) {
+                printf("[BTSTACK_HOST] DEBUG: Auth OK, waiting for HCI_EVENT_ENCRYPTION_CHANGE (0x08)...\n");
+            } else {
+                printf("[BTSTACK_HOST] DEBUG: Auth FAILED - encryption will NOT follow\n");
+            }
             uint8_t status = packet[2];
             hci_con_handle_t handle = little_endian_read_16(packet, 3);
             printf("[BTSTACK_HOST] Authentication complete: handle=0x%04X status=0x%02X\n", handle, status);
-
-            // Incoming Sony HID reconnections can complete authentication without
-            // reliably advancing to encryption. Force LEVEL_2 so HID Host opens.
-            if (status == 0x00 &&
-                classic_state.pending_valid &&
-                !classic_state.pending_outgoing &&
-                classic_state.pending_acl_handle == handle) {
-                const bt_device_profile_t* profile = classic_state.pending_profile;
-
-                if (!profile && classic_state.pending_name[0]) {
-                    profile = bt_device_lookup_by_name(classic_state.pending_name);
-                }
-
-                if (profile && profile->default_vid == 0x054C) {
-                    if (!classic_state.pending_sony_encryption_requested) {
-                        extern const hci_cmd_t hci_set_connection_encryption;
-                        classic_state.pending_sony_encryption_requested = true;
-                        printf("[BTSTACK_HOST] Sony incoming auth OK - enabling HCI encryption\n");
-                        hci_send_cmd(&hci_set_connection_encryption, handle, 1);
-                    } else {
-                        printf("[BTSTACK_HOST] Sony incoming auth OK - encryption already requested\n");
-                    }
-                }
-            }
 
             // Handle PIN_OR_KEY_MISSING (0x06): controller cleared its link key
             // (e.g., put in pairing mode) but we still have a stale stored key.
