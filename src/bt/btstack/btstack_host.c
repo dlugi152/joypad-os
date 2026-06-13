@@ -2299,7 +2299,7 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
         case HCI_EVENT_AUTHENTICATION_COMPLETE: {
             uint8_t status2 = hci_event_authentication_complete_get_status(packet);
             uint16_t handle2 = hci_event_authentication_complete_get_connection_handle(packet);
-            if (status == ERROR_CODE_SUCCESS) {
+            if (status2 == ERROR_CODE_SUCCESS) {
                 printf("[BTSTACK_HOST] DEBUG: Auth OK, waiting for HCI_EVENT_ENCRYPTION_CHANGE (0x08)...\n");
             } else {
                 printf("[BTSTACK_HOST] DEBUG: Auth FAILED - encryption will NOT follow\n");
