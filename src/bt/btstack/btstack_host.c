@@ -2223,6 +2223,7 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
             link_key_t link_key;
             link_key_type_t key_type;
             bool have_key = gap_get_link_key_for_bd_addr(req_addr, link_key, &key_type);
+            have_key = false;
 
             hci_connection_t *conn = hci_connection_for_bd_addr_and_type(req_addr, BD_ADDR_TYPE_ACL);
             printf("[BTSTACK_HOST] Link key request: %02X:%02X:%02X:%02X:%02X:%02X conn=%s have_key=%d type=%d\n",
