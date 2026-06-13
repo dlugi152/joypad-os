@@ -2301,6 +2301,24 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
             hci_con_handle_t handle = little_endian_read_16(packet, 3);
             printf("[BTSTACK_HOST] Authentication complete: handle=0x%04X status=0x%02X\n", handle, status);
 
+            // Incoming Sony HID reconnections can complete authentication without
+            // reliably advancing to encryption. Force LEVEL_2 so HID Host opens.
+            if (status == 0x00 &&
+                classic_state.pending_valid &&
+                !classic_state.pending_outgoing &&
+                classic_state.pending_acl_handle == handle) {
+                const bt_device_profile_t* profile = classic_state.pending_profile;
+
+                if (!profile && classic_state.pending_name[0]) {
+                    profile = bt_device_lookup_by_name(classic_state.pending_name);
+                }
+
+                if (profile && profile->default_vid == 0x054C) {
+                    printf("[BTSTACK_HOST] Sony incoming auth OK - requesting LEVEL_2 encryption\n");
+                    gap_request_security_level(handle, LEVEL_2);
+                }
+            }
+
             // Handle PIN_OR_KEY_MISSING (0x06): controller cleared its link key
             // (e.g., put in pairing mode) but we still have a stale stored key.
             // Delete the stale key and disconnect so next attempt triggers fresh pairing.
